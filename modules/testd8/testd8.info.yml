@@ -1,0 +1,5 @@
+name: testd8
+type: module
+description: Test module using drupal 8
+core: 8.x
+package: Test Project

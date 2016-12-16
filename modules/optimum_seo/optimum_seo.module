@@ -1,0 +1,182 @@
+<?php
+
+use Drupal\Core\Form\FormStateInterface;
+
+function optimum_seo_form_node_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+$input = &$form_state->getUserInput();
+//print_r($input);
+$node = $form_state->getFormObject()->getEntity();
+$type = $node->getType();
+//Get optimum_seo config values
+$config = \Drupal::config('optimum_seo.settings');
+$configured_types = $config->get('optimum_seo.seo_content_types');
+
+$optimumSEO_enabled =  (array_key_exists($type, $configured_types) && $configured_types[$type] != '0') ? TRUE : FALSE;
+
+ if ($optimumSEO_enabled) {
+      $form['optimum_seo'] = array(
+        '#type' => 'details',
+        '#group' => 'advanced',
+        '#title' => t('Optimum SEO'),
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+        '#tree' => TRUE,
+        '#weight' => -99,
+      );
+      $form['optimum_seo']['seo_title'] = array(
+        '#type' => 'textfield',
+        '#title' => 'SEO Title',
+        '#description' => 'SEO title, this will be used as the page title.',
+        '#default_value' => isset($node->seo_title) ? $node->seo_title : '',
+      );
+       $form['optimum_seo']['seo_description'] = array(
+        '#type' => 'textarea',
+        '#title' => 'SEO Meta Description',
+        '#description' => 'SEO meta description, this will be used as the page meta tag description.',
+        '#default_value' => isset($node->seo_description) ? $node->seo_description : '',
+      );
+      $form['optimum_seo']['seo_h1'] = array(
+        '#type' => 'textfield',
+        '#title' => 'SEO H1 Title',
+        '#description' => 'This title will be used in the H1 tag of the page',
+        '#default_value' => isset($node->seo_h1) ? $node->seo_h1 : '',
+      );
+  if($form_id == 'seo_omniture_node_form'){
+      $form['optimum_seo']['seo_page_path'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Optimum Page Path test',
+        '#description' => 'This is required for mapping these SEO fields to the respective pages. ( Example: for the page https://www.optimum.net/support/pay-bill/, please enter the value as <i>support/pay-bill</i> )',
+        '#default_value' => isset($node->seo_page_path) ? $node->seo_page_path : '',
+        '#required' => TRUE,
+      );
+    }
+      $form['optimum_seo']['seo_url'] = array(
+        '#type' => 'hidden',
+        '#title' => 'SEO url',
+        '#description' => 'This will be used as the seo url',
+        '#default_value' => isset($node->seo_url) ? $node->seo_url : '',
+      );
+      $form['optimum_seo']['mobile_url'] = array(
+        '#type' => 'textfield',
+        '#maxlength'=>255,
+        '#title' => 'Mobile Url',
+        '#description' => 'Url for the mobile version',
+        '#default_value' => isset($node->mobile_url) ? $node->mobile_url : '',
+      );
+      $form['#entity_builders'][] = 'optimum_seo_node_builder';
+       foreach (array_keys($form['actions']) as $action) {
+      if ($action != 'preview' && isset($form['actions'][$action]['#type']) && $form['actions'][$action]['#type'] === 'submit') {
+        $form['actions'][$action]['#submit'][] = 'optimum_seo_form_node_form_submit';
+      }
+    }
+
+  }
+}
+
+
+function optimum_seo_form_node_form_submit($form, FormStateInterface $form_state) {
+    $node = $form_state->getFormObject()->getEntity();
+    $type = $node->getType();
+    $values = $form_state->getValue('optimum_seo');
+    $config = \Drupal::config('optimum_seo.settings');
+    $configured_types = $config->get('optimum_seo.seo_content_types');
+    $optimumSEO_enabled =  (array_key_exists($type, $configured_types) && $configured_types[$type] != '0') ? TRUE : FALSE;
+    if ($optimumSEO_enabled) {
+         $records =  array(
+            'nid' => $node->id(),
+            'vid' => $node->vid->value,
+            'seo_page_path' => '',
+            'seo_data' => serialize($values),
+          );
+         \Drupal::database()
+              ->upsert('optimum_seo')->fields($records)
+              ->key('nid')
+              ->execute();
+        \Drupal::database()
+              ->insert('optimum_seo_revision')->fields($records)
+              ->execute();
+    }
+}
+
+function optimum_seo_node_load($nodes) {
+  if (!empty($nodes)) {
+         foreach ($nodes as $one) {
+            $nid = $one->id();
+            $vid = $one->vid->value;
+            $type = $one->getType();
+          }
+       $config = \Drupal::config('optimum_seo.settings');
+       $configured_types = $config->get('optimum_seo.seo_content_types');
+       $optimumSEO_enabled =  (array_key_exists($type, $configured_types) && $configured_types[$type] != '0') ? TRUE : FALSE;
+        if ($optimumSEO_enabled) {
+          $query = \Drupal::database()->select('optimum_seo', 'seo');
+          $query->fields('seo', ['nid', 'vid', 'seo_page_path', 'seo_data']);
+          $query->condition('seo.nid', $nid);
+          $query->condition('seo.vid', $vid);
+          $query->range(0, 1);
+          $result = $query->execute();
+              foreach ($result as $record) {
+                   if (isset($record->seo_data) && $record->seo_data !='') {
+                          $seo_data = unserialize($record->seo_data);
+                          $nodes[$record->nid]->seo_page_path = $record->seo_page_path;
+                        foreach($seo_data as $k => $v) {
+                              $nodes[$record->nid]->$k = $v;
+                        }
+                   }
+              }
+         }
+    }
+}
+
+function optimum_seo_node_update($node){
+  //to update the optimum_seo and optimum_seo_revision tables if there is any revert from any revisions
+    $current_path = \Drupal::service('path.current')->getPath();
+    $path_args = explode('/', $current_path);
+    $nid = $node->id();
+    $old_vid = $path_args[4];
+    $type = $node->getType();
+    if ($path_args[3] == 'revisions') {
+        $config = \Drupal::config('optimum_seo.settings');
+        $configured_types = $config->get('optimum_seo.seo_content_types');
+        $optimumSEO_enabled =  (array_key_exists($type, $configured_types) && $configured_types[$type] != '0') ? TRUE : FALSE;
+        if ($optimumSEO_enabled) {
+            $query = \Drupal::database()->select('optimum_seo_revision', 'seo');
+            $query->fields('seo', ['nid', 'vid', 'seo_page_path', 'seo_data']);
+            $query->condition('seo.nid', $nid);
+            $query->condition('seo.vid', $old_vid);
+            $query->range(0, 1);
+            $data = $query->execute()->fetchAssoc();
+            $data['vid'] = $node->vid->value;
+             if (isset($data['nid']) &&  $data['nid'] !='') {
+                 \Drupal::database()
+                ->upsert('optimum_seo')->fields($data)
+                ->key('nid')
+                ->execute();
+                \Drupal::database()
+                ->insert('optimum_seo_revision')->fields($data)
+                ->execute();
+             }
+        }
+    }
+  }
+
+function optimum_seo_node_delete($node){
+  $type = $node->getType();
+  $config = \Drupal::config('optimum_seo.settings');
+  $configured_types = $config->get('optimum_seo.seo_content_types');
+  $optimumSEO_enabled =  (array_key_exists($type, $configured_types) && $configured_types[$type] != '0') ? TRUE : FALSE;
+       if ($optimumSEO_enabled) {
+              $nid = $node->id();
+              //delete from the optimum_seo table
+              $query = \Drupal::database()->delete('optimum_seo');
+              $query->condition('nid', $nid);
+              $query->execute();
+
+              //delete from the optimum_seo_revision table
+              $query = \Drupal::database()->delete('optimum_seo_revision');
+              $query->condition('nid', $nid);
+              $query->execute();
+        }
+}
+
+

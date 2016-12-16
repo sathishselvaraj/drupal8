@@ -1,0 +1,14 @@
+name: Optimum SEO
+type: module
+description:  'This module gives control over the SEO specific data of the page.'
+package: Optimum
+core: 8.x
+version: '8.x-1.0'
+project: 'Optimum SEO'
+datestamp: '1473344929'
+
+configure: optimum_seo.form
+
+
+
+

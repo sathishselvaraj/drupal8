@@ -1,0 +1,93 @@
+<?php
+
+/**
+ * Installation file for optimum_seo module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+
+function optimum_seo_schema() {
+  $schema['optimum_seo'] = array(
+      'description' => 'The main table to hold the optimum_seo data.',
+      'fields' => array(
+        'nid' => array(
+          'description' => 'The foreign key to node.nid',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+         'vid' => array(
+          'description' => 'The foreign key to node.vid',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'seo_page_path' => array(
+          'description' => 'The seo page path',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => FALSE,
+        ),
+        'seo_data' => array(
+        'type' => 'blob',
+        'size' => 'big',
+        'not null' => TRUE,
+        'serialize' => TRUE,
+        'description' => 'Serialized data containing the meta tag configuration.',
+        'translatable' => TRUE,
+      ),
+
+      ),
+      'primary key' => array('nid'),
+  );
+  $schema['optimum_seo_revision'] = array(
+      'description' => 'The revision table to hold the optimum_seo revision.',
+      'fields' => array(
+        'nid' => array(
+          'description' => 'The foreign key to node.nid',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'vid' => array(
+          'description' => 'The foreign key to node.vid',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'seo_page_path' => array(
+          'description' => 'The seo page path',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => FALSE,
+        ),
+        'seo_data' => array(
+        'type' => 'blob',
+        'size' => 'big',
+        'not null' => TRUE,
+        'serialize' => TRUE,
+        'description' => 'Serialized data containing the meta tag configuration.',
+        'translatable' => TRUE,
+      ),
+      ),
+      'primary key' => array('nid', 'vid'),
+  );
+
+  return $schema;
+}
+
+
+/**
+ * Implements hook_uninstall().
+ */
+function optimum_seo_uninstall() {
+  // Remove the optimum_seo fields.
+  $fields = entity_load_multiple_by_properties('field_storage_config', array('type' => 'optimum_seo'));
+  foreach ($fields as $field) {
+    $field->delete();
+  }
+}
+
+

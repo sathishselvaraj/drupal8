@@ -1,0 +1,15 @@
+optimum_seo.admin_index:
+  path: '/admin/config/optimum_seo'
+  defaults:
+    _controller: '\Drupal\system\Controller\SystemController::systemAdminMenuBlockPage'
+    _title: 'Optimum SEO'
+  requirements:
+    _permission: 'access administration pages'
+
+optimum_seo.form:
+  path: '/admin/config/optimum_seo/types'
+  defaults:
+    _title: 'Optimum SEO Configuration'
+    _form: '\Drupal\optimum_seo\Form\OptimumSeoForm'
+  requirements:
+    _permission: 'access administration pages'

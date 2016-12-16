@@ -1,0 +1,5 @@
+name: alerts
+description: "Module to create and update alerts"
+type:module
+core:8.x
+package: Optimum

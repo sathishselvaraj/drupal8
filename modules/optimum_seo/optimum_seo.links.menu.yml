@@ -1,0 +1,10 @@
+optimum_seo.admin_index:
+  title: 'Optimum SEO'
+  route_name: optimum_seo.admin_index
+  parent: system.admin_config
+  position: left
+optimum_seo.form:
+  title: 'Optimum SEO Config'
+  description: 'Configure content types to include the SEO fields'
+  parent: optimum_seo.admin_index
+  route_name: optimum_seo.form
